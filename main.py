@@ -1,80 +1,44 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from app.services.preprocessing import preprocess_image
+from app.models.text_extraction import extract_text
+from app.services.openai_formatter import format_text_with_openai
+from app.services.ocr_service import OCRService
+from utils.file_utils import save_uploaded_file
+from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
-from app.services.ocr_service import OCRService
-from app.services.ai_service import AIService
-from app.models.document import Document, OCRResponse
-from typing import List
-from openai import OpenAI
 
 load_dotenv()
 
-# Initialize FastAPI application
-app = FastAPI(title="OCR API System", debug=True)
+ocr_service = OCRService()
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-# Validate API key
+app = FastAPI(title="OCR API with Image Preprocessing and OpenAI Integration")
+
 API_KEY = os.getenv("OPENAI_API_KEY")
 if not API_KEY:
     raise ValueError("Environment variable OPENAI_API_KEY is not set.")
 
-# Initialize services
-ocr_service = OCRService()
-ai_service = AIService()
+class OCRResponse(BaseModel):
+    raw_text: str
+    formatted_data: dict
 
 
-client = OpenAI()
+@app.post("/extract-text", response_model=OCRResponse)
+async def extract_text_from_file(file: UploadFile = File(...)):
+    if not file.filename.endswith(('.png', '.jpg', '.jpeg', '.pdf')):
+        raise HTTPException(status_code=400, detail="Invalid file format")
 
-@app.post("/ocr/process", response_model=List[OCRResponse])
-async def process_document(files: List[UploadFile] = File(...)):
-    responses = []
-    for file in files:
-        try:
-            # Process the document using OCR
-            extracted_text = await ocr_service.process_document(file)
+    filepath = save_uploaded_file(file)
 
-            # Log the extracted text (for debugging)
-            # print(f"Extracted Text: {extracted_text}")
+    # Preprocess image
+    preprocessed_path = preprocess_image(filepath)
+    # extracted_text =  await ocr_service.process_document(file)
+    # Extract text
+    raw_text = extract_text(preprocessed_path)
 
-            # Enhance and validate results using AI
-            # enhanced_results = await ai_service(extracted_text)
+    # Format data using OpenAI
+    # formatted_data = format_text_with_openai(raw_text)
+    print(raw_text)
 
-            # Append results to the response list
-            completion = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                     {
-                        "role": "user",
-                        "content": f"Please detect the document type and convert the following text into an array of object: {extracted_text}"  # Add the prompt here
-                    }
-                ])
-            
-            print(completion.choices[0].message.content)
-        
-            responses.append(
-                OCRResponse(
-                    success=True,
-                    text=completion.choices[0].message.content,
-                    document_type=file.filename.split('.')[-1]
-                )
-            )
-        except Exception as e:
-            # Log the error and append a failure response
-            responses.append(
-                OCRResponse(
-                    success=False,
-                    text=str(e),
-                    document_type=file.filename.split('.')[-1]
-                )
-            )
-    return responses
+    return {"raw_text": raw_text, "formatted_data": raw_text}
