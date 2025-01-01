@@ -49,16 +49,31 @@ async def process_document(files: List[UploadFile] = File(...)):
             # enhanced_results = await ai_service(extracted_text)
 
             # Append results to the response list
+    #         completion = client.chat.completions.create(
+    #             model="gpt-4o",
+    #             messages=[
+    #     {"role": "system", "content": "You are an advanced text extraction assistant. Your task is to extract and return only key-value pairs from the given text, with no explanations, summaries, or additional formatting."},
+    #     {
+    #         "role": "user",
+    #         "content": f"Extract and return only the key-value pairs from the following text:\n\n{extracted_text}"
+    #     }
+    # ])
             completion = client.chat.completions.create(
-                model="gpt-4o",
+               model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                     {
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are an advanced text extraction assistant. If the given text contains clear key-value pairs, "
+                            "extract and return them in a structured key-value format. If not, return the text as is, without adding explanations, summaries, or formatting instructions."
+                        )
+                    },
+                    {
                         "role": "user",
-                        "content": f"Please detect the document type and convert the following text into an array of object: {extracted_text}"  # Add the prompt here
+                        "content": f"Analyze the following text and respond accordingly:\n\n{extracted_text}"
                     }
-                ])
-            
+                ]
+            )
             print(completion.choices[0].message.content)
         
             responses.append(

@@ -7,11 +7,14 @@ from utils.file_utils import save_uploaded_file
 from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
 ocr_service = OCRService()
 
+
+client = OpenAI()
 
 app = FastAPI(title="OCR API with Image Preprocessing and OpenAI Integration")
 
@@ -38,7 +41,15 @@ async def extract_text_from_file(file: UploadFile = File(...)):
     raw_text = extract_text(preprocessed_path)
 
     # Format data using OpenAI
-    # formatted_data = format_text_with_openai(raw_text)
-    print(raw_text)
+    completion = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+        {"role": "system", "content": "You are an advanced text extraction assistant. Your task is to extract and return only key-value pairs from the given text, with no explanations, summaries, or additional formatting."},
+        {
+            "role": "user",
+            "content": f"Extract and return only the key-value pairs from the following text:\n\n{raw_text}"
+        }
+    ])
+    print(completion.choices[0].message.content)
 
-    return {"raw_text": raw_text, "formatted_data": raw_text}
+    return {"raw_text": raw_text, "formatted_data": {"text": completion.choices[0].message.content}}

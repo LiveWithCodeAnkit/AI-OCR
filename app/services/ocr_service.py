@@ -12,7 +12,7 @@ pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tessera
 class OCRService:
     def __init__(self):
         # Configure Tesseract for multiple languages
-        self.languages = "eng+ara"
+        self.languages = "eng"
         
     async def detect_edges_and_align(image: Image.Image) -> Image.Image:
         """
