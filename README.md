@@ -32,7 +32,6 @@ This project is an advanced Optical Character Recognition (OCR) API built using 
    git clone https://github.com/your-repo/ocr-api.git
    cd ocr-api
 
-
 python -m venv venv
 pip install -r requirements.txt
 venv\Scripts\activate
